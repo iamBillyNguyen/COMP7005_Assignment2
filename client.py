@@ -26,7 +26,7 @@ def parse_arguments():
     FILE = args.file
 
 def create_socket():
-    print("Creating socket...")
+    print("Client - Creating socket...")
     try:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -37,7 +37,7 @@ def create_socket():
     return client_socket
 
 def connect_socket(client_socket):
-    print("Connecting to server socket at {}:{}...".format(IP, PORT))
+    print("Client - Connecting to server socket at {}:{}...".format(IP, PORT))
     try:
         client_socket.connect((IP, PORT))
 
@@ -47,7 +47,8 @@ def connect_socket(client_socket):
         sys.exit()
 
 def handle_request(client_socket):
-    print("Client request:")
+    print("------------------------------------")
+    print("Client - Request:")
     while True:
         try:
             file = open(FILE, "r")
@@ -81,8 +82,15 @@ def handle_request(client_socket):
         break
 
 def handle_server_response(client_socket):
-    response = client_socket.recv(BUFFER_SIZE).decode("utf-8")
-    print("Server response:\n{}".format(response))
+    try:
+        response = client_socket.recv(BUFFER_SIZE).decode("utf-8")
+
+    except socket.error as e:
+        print("Client - Error reading file: {}".format(e))
+        client_socket.close()
+        sys.exit()
+
+    print("Client - Receiving server response:\n{}".format(response))
 
 if __name__ == "__main__":
     parse_arguments()
@@ -90,4 +98,5 @@ if __name__ == "__main__":
     connect_socket(cl_socket)
     handle_request(cl_socket)
 
+    print("Client - Closing socket")
     cl_socket.close()

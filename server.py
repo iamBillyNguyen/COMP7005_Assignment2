@@ -3,20 +3,20 @@ import re
 import sys
 import socket
 import threading
+from contextlib import nullcontext
 
-SERVER_IP = "0.0.0.0" # All network interfaces (INADDR_ANY)
+IP = ""
 PORT = 0
 MAX_CONNECTIONS = 10
 BUFFER_SIZE = 1024
+IDX = 0
 
-# TODO Add client count for logging
-# TODO Make sure all errors are handled
-# TODO Clean up
-# TODO Test with 10 clients concurrently, create a script?
 
 def parse_arguments():
-    global PORT
+    global IP, PORT
+
     parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--ip", type=str, required=True, help="Server\'s IP address")
     parser.add_argument("-p", "--port", type=int, required=True, help="Server\'s port")
 
     try:
@@ -26,51 +26,97 @@ def parse_arguments():
         parser.print_help()
         sys.exit()
 
+    IP = args.ip
     PORT = args.port
 
 def create_socket():
-    print("Creating socket")
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    print("Server - Creating socket")
+    try:
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    except socket.error as e:
+        print("Server - Error creating socket: {}".format(e))
+        sys.exit()
+
     return server_socket
     
-def bind_socket(server_socket, port):
-    print("Binding socket")
-    server_socket.bind((SERVER_IP, port))
+def bind_socket(server_socket):
+    print("Server - Binding socket")
+    try:
+        server_socket.bind((IP, PORT))
+
+    except socket.error as e:
+        print("Server - Error binding socket: {}".format(e))
+        sys.exit()
 
 def listen_socket(server_socket):
-    print("Listening on {}:{}".format(SERVER_IP, PORT))
-    server_socket.listen(MAX_CONNECTIONS)
+    print("Server - Listening on {}:{}".format(IP, PORT))
+    try:
+        server_socket.listen(MAX_CONNECTIONS)
 
+    except socket.error as e:
+        print("Server - Error listening socket: {}".format(e))
+        sys.exit()
+
+# Threading is fine since no shared preference
 def accept_connection(server_socket):
-    print("Accept connection")
+    global IDX
+    client_socket = None
+    print("Server - Accepting connection")
     while True:
-        client_socket, client_address = server_socket.accept()
+        try:
+            client_socket, client_address = server_socket.accept()
+
+        except socket.error as e:
+            print("Server - Error accepting connection: {}".format(e))
+            client_socket.close()
+
         threading.Thread(target=handle_client_request, args=(client_socket,)).start()
 
 def handle_client_request(client_socket):
-    client_data = client_socket.recv(BUFFER_SIZE).decode("utf-8")
-    print("Client request:")
+    global IDX
+    client_data = ""
+
+    IDX = IDX + 1
+    try:
+        client_data = client_socket.recv(BUFFER_SIZE).decode("utf-8")
+
+    except socket.error as e:
+        print("Server - Error receiving data: {}".format(e))
+        client_socket.close()
+    print("------------------------------------")
+    print("Server - Handling client {} request:".format(IDX))
     if client_data:
         print(client_data)
         handle_response(client_socket, client_data)
     else:
-        print("Client disconnected")
+        print("Server - Client {} disconnected".format(IDX))
+        IDX = IDX - 1
 
 def process_data(client_data):
     return len(re.findall('[a-zA-Z]', client_data))
 
-# TODO: Count the letters here
+
 def handle_response(client_socket, client_data):
-    print("Count: " + str(process_data(client_data)))
+    global IDX
+
+    print("Server - Counting alphabets: {}".format(process_data(client_data)))
     count = str(process_data(client_data))
-    print("Server response:\n{}".format(count))
-    client_socket.send(bytes(count, "utf-8"))
+    print("Server - Response:\n{}".format(count))
+    try:
+        client_socket.send(bytes(count, "utf-8"))
+
+    except socket.error as e:
+        print("Server - Error sending response: {}".format(e))
+        client_socket.close()
+        
+    IDX = IDX - 1
 
 if __name__ == '__main__':
     parse_arguments()
-    main_socket = create_socket()
-    bind_socket(main_socket, PORT)
-    listen_socket(main_socket)
-    accept_connection(main_socket)
+    se_socket = create_socket()
+    bind_socket(se_socket)
+    listen_socket(se_socket)
+    accept_connection(se_socket)
 
-    main_socket.close()
+    se_socket.close()
