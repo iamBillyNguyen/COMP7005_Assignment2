@@ -54,12 +54,16 @@ def handle_request(client_socket):
             file = open(FILE, "r")
             data = file.read()
             print(data)
+
             if not data:
-                break
+                print("Client - Empty file")
+                data = "\0"
+
             if len(data) > BUFFER_SIZE:
                 print("Client - Error file is longer than 1024 characters")
                 client_socket.close()
                 sys.exit()
+
             while data:
                 try:
                     client_socket.send(bytes(data, encoding="utf-8"))
