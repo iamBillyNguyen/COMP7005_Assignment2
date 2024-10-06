@@ -3,14 +3,12 @@ import re
 import sys
 import socket
 import threading
-from contextlib import nullcontext
 
 IP = ""
 PORT = 0
 MAX_CONNECTIONS = 10
 BUFFER_SIZE = 1024
 IDX = 0
-
 
 def parse_arguments():
     global IP, PORT
