@@ -8,7 +8,6 @@ IP = ""
 PORT = 0
 MAX_CONNECTIONS = 10
 BUFFER_SIZE = 1024
-IDX = 0
 
 def parse_arguments():
     global IP, PORT
@@ -58,7 +57,6 @@ def listen_socket(server_socket):
 
 # Threading is fine since no shared preference
 def accept_connection(server_socket):
-    global IDX
     client_socket = None
     print("Server - Accepting connection")
     while True:
@@ -72,10 +70,8 @@ def accept_connection(server_socket):
         threading.Thread(target=handle_client_request, args=(client_socket,)).start()
 
 def handle_client_request(client_socket):
-    global IDX
     client_data = ""
 
-    IDX = IDX + 1
     try:
         client_data = client_socket.recv(BUFFER_SIZE).decode("utf-8")
 
@@ -83,32 +79,27 @@ def handle_client_request(client_socket):
         print("Server - Error receiving data: {}".format(e))
         client_socket.close()
     print("------------------------------------")
-    print("Server - Handling client {} request:".format(IDX))
+    print("Server - Handling client request:")
     if client_data:
         print(client_data)
         handle_response(client_socket, client_data)
     else:
-        print("Server - Client {} disconnected".format(IDX))
-        IDX = IDX - 1
+        print("Server - Client disconnected")
 
 def process_data(client_data):
     return len(re.findall('[a-zA-Z]', client_data))
 
 
 def handle_response(client_socket, client_data):
-    global IDX
-
     print("Server - Counting alphabets: {}".format(process_data(client_data)))
     count = str(process_data(client_data))
-    print("Server - Response:\n{}".format(count))
+    print("Server - Response:\n{}\n".format(count))
     try:
         client_socket.send(bytes(count, "utf-8"))
 
     except socket.error as e:
         print("Server - Error sending response: {}".format(e))
         client_socket.close()
-        
-    IDX = IDX - 1
 
 if __name__ == '__main__':
     parse_arguments()
